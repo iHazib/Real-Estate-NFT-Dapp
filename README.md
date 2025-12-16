@@ -12,7 +12,7 @@
 
 ## 🚀 Live Demo
 
-**View the Live dApp:** [PASTE_YOUR_VERCEL_LINK_HERE]
+**View the Live dApp:** https://real-estate-nft-dapp.vercel.app
 
 *(Note: Requires MetaMask installed and connected to Sepolia Testnet)*
 
