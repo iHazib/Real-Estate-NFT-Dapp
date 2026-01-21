@@ -1,22 +1,24 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* Modern Palette */
-  --color-bg: #F8FAFC;
-  --color-surface: #FFFFFF;
-  --color-text-main: #0F172A;
-  --color-text-secondary: #64748B;
+  /* Techy Web3 Palette - Dark Mode */
+  --color-bg: #0B1120;
+  --color-surface: #1E293B;
+  --color-surface-hover: #334155;
+  --color-text-main: #F1F5F9;
+  --color-text-secondary: #94A3B8;
   
-  --color-primary: #4F46E5; /* Indigo */
-  --color-primary-hover: #4338CA;
+  --color-primary: #8B5CF6; /* Violet */
+  --color-primary-hover: #7C3AED;
   
-  --color-accent: #0EA5E9; /* Sky Blue */
+  --color-accent: #06B6D4; /* Cyan */
   --color-success: #10B981;
-  --color-border: #E2E8F0;
+  --color-border: #334155;
   
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5);
+  --shadow-neon: 0 0 10px rgba(139, 92, 246, 0.3);
   
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -55,7 +57,8 @@ nav {
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem 2rem;
-  background: var(--color-surface);
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border);
   position: sticky;
   top: 0;
@@ -76,7 +79,9 @@ nav {
 .nav__brand h1 {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--color-primary);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
   letter-spacing: -0.025em;
 }
 
@@ -99,17 +104,19 @@ nav {
 
 .nav__connect {
   padding: 0.75rem 1.5rem;
-  background-color: var(--color-text-main);
-  color: var(--color-surface);
-  border: 1px solid transparent;
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
   border-radius: var(--radius-full);
   font-weight: 600;
   transition: all 0.2s;
+  box-shadow: var(--shadow-neon);
 }
 
 .nav__connect:hover {
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-hover);
   transform: translateY(-1px);
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.6);
 }
 
 /* ------------------------------------------------------ */
@@ -117,7 +124,8 @@ nav {
 
 header {
   height: 60vh;
-  background: linear-gradient(rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.6)), url("./assets/houses.png");
+  /* Use a dark overlay over the image */
+  background: linear-gradient(to bottom, rgba(11, 17, 32, 0.7), rgba(11, 17, 32, 0.9)), url("./assets/houses.png");
   background-size: cover;
   background-position: center;
   display: flex;
@@ -126,6 +134,7 @@ header {
   align-items: center;
   text-align: center;
   padding: 0 1rem;
+  position: relative;
 }
 
 .header__title {
@@ -134,23 +143,27 @@ header {
   font-weight: 800;
   margin-bottom: 2rem;
   letter-spacing: -0.025em;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  text-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
 .header__search {
   width: 100%;
   max-width: 600px;
   padding: 1.25rem 2rem;
-  border: none;
+  border: 1px solid var(--color-border);
+  background: rgba(30, 41, 59, 0.8);
+  backdrop-filter: blur(8px);
+  color: white;
   border-radius: var(--radius-full);
   font-size: 1.1rem;
   box-shadow: var(--shadow-lg);
-  transition: transform 0.2s;
+  transition: all 0.2s;
 }
 
 .header__search:focus {
   outline: none;
-  transform: scale(1.02);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
 }
 
 /* ------------------------------------------------------ */
@@ -166,6 +179,9 @@ header {
   font-size: 1.75rem;
   font-weight: 700;
   margin-bottom: 1.5rem;
+  color: var(--color-text-main);
+  border-left: 4px solid var(--color-accent);
+  padding-left: 1rem;
 }
 
 .cards {
@@ -185,7 +201,7 @@ header {
 }
 
 .card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-8px);
   box-shadow: var(--shadow-lg);
   border-color: var(--color-primary);
 }
@@ -194,6 +210,7 @@ header {
   height: 240px;
   width: 100%;
   overflow: hidden;
+  position: relative;
 }
 
 .card__image img {
@@ -204,7 +221,23 @@ header {
 }
 
 .card:hover .card__image img {
-  transform: scale(1.05);
+  transform: scale(1.1);
+}
+
+.card__badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: var(--color-accent);
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  z-index: 10;
 }
 
 .card__info {
@@ -229,12 +262,27 @@ header {
 }
 
 /* ------------------------------------------------------ */
+/* -- FOOTER -- */
+
+footer {
+    background: var(--color-surface);
+    padding: 3rem 2rem;
+    border-top: 1px solid var(--color-border);
+    text-align: center;
+    margin-top: 4rem;
+}
+
+footer p {
+    color: var(--color-text-secondary);
+}
+
+/* ------------------------------------------------------ */
 /* -- MODAL (HOME DETAILS) -- */
 
 .home {
   position: fixed;
   inset: 0;
-  background-color: rgba(15, 23, 42, 0.6);
+  background-color: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(8px);
   display: flex;
   justify-content: center;
@@ -254,12 +302,13 @@ header {
   overflow: hidden;
   box-shadow: var(--shadow-lg);
   position: relative;
+  border: 1px solid var(--color-border);
 }
 
 .home__image {
   width: 100%;
   height: 100%;
-  background: #f1f5f9;
+  background: #0f172a;
 }
 
 .home__image img {
@@ -279,6 +328,7 @@ header {
   font-size: 2rem;
   line-height: 1.2;
   margin-bottom: 0.5rem;
+  color: var(--color-text-main);
 }
 
 .home__overview h2 {
@@ -288,13 +338,13 @@ header {
 }
 
 .home__owned {
-  background-color: #DCFCE7;
-  color: #166534;
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--color-success);
   padding: 1rem;
   border-radius: var(--radius-md);
   text-align: center;
   font-weight: 600;
-  border: 1px solid #bbf7d0;
+  border: 1px solid var(--color-success);
 }
 
 .home__buy {
@@ -308,6 +358,7 @@ header {
   font-weight: 600;
   transition: background 0.2s;
   margin-bottom: 1rem;
+  cursor: pointer;
 }
 
 .home__buy:hover:not(:disabled) {
@@ -315,8 +366,9 @@ header {
 }
 
 .home__buy:disabled {
-  opacity: 0.7;
+  opacity: 0.5;
   cursor: not-allowed;
+  background: var(--color-secondary-text);
 }
 
 .home__contact {
@@ -331,15 +383,15 @@ header {
 }
 
 .home__contact:hover {
-  border-color: var(--color-text-main);
-  background: #f8fafc;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .home__close {
   position: absolute;
   top: 1.5rem;
   right: 1.5rem;
-  background: white;
+  background: rgba(255, 255, 255, 0.1);
   border: none;
   border-radius: 50%;
   width: 40px;
@@ -353,28 +405,33 @@ header {
   transition: transform 0.2s;
 }
 
+.home__close img {
+    filter: invert(1);
+}
+
 .home__close:hover {
   transform: rotate(90deg);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Alert Banner */
 .alert {
-  background: linear-gradient(to right, #fffbeb, #fef3c7);
-  color: #92400e;
+  background: var(--color-primary);
+  color: white;
   padding: 0.75rem 2rem;
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 1rem;
   font-size: 0.9rem;
-  border-bottom: 1px solid #fcd34d;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 
 .alert__close {
   background: none;
   border: none;
   font-weight: 700;
-  color: #92400e;
+  color: white;
   cursor: pointer;
   margin-left: auto;
 }

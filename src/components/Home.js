@@ -14,11 +14,11 @@ const Home = ({ home, provider, account, escrow, toggleProp }) => {
   const [seller, setSeller] = useState(null);
   const [owner, setOwner] = useState(null);
 
-  const fetchDetails = async () => {
-    // -- LOGIC PRESERVED FROM YOUR FIXES --
-    const buyer = await escrow.buyer(home.id);
-    setBuyer(buyer);
+  const [tenant, setTenant] = useState(null);
+  const [isRent, setIsRent] = useState(false);
 
+  const fetchDetails = async () => {
+    // Basic roles
     const seller = await escrow.seller();
     setSeller(seller);
 
@@ -28,17 +28,32 @@ const Home = ({ home, provider, account, escrow, toggleProp }) => {
     const lender = await escrow.lender();
     setLender(lender);
 
-    const hasBought = await escrow.approval(home.id, buyer);
-    setHasBought(hasBought);
+    // Check if Rent or Sale
+    const isRentStatus = await escrow.isRent(home.id);
+    setIsRent(isRentStatus);
 
-    const hasSold = await escrow.approval(home.id, seller);
-    setHasSold(hasSold);
+    if (isRentStatus) {
+        const tenantAddr = await escrow.tenant(home.id);
+        if (tenantAddr !== ethers.constants.AddressZero) {
+             setTenant(tenantAddr);
+        }
+    } else {
+        // Sale Logic
+        const buyer = await escrow.buyer(home.id);
+        setBuyer(buyer);
+
+        const hasBought = await escrow.approval(home.id, buyer);
+        setHasBought(hasBought);
+
+        const hasSold = await escrow.approval(home.id, seller);
+        setHasSold(hasSold);
+
+        const hasLended = await escrow.approval(home.id, lender);
+        setHasLended(hasLended);
+    }
 
     const hasInspected = await escrow.inspectionStatus(home.id);
     setHasInspected(hasInspected);
-
-    const hasLended = await escrow.approval(home.id, lender);
-    setHasLended(hasLended);
   };
 
   const fetchOwner = async () => {
@@ -56,6 +71,8 @@ const Home = ({ home, provider, account, escrow, toggleProp }) => {
       let tx = await escrow.connect(signer).earnestDeposit(home.id, { value: amount });
       await tx.wait();
 
+      // Only buyer approves initially? Or does this logic need review?
+      // Based on original code, buyer approves immediately after deposit.
       tx = await escrow.connect(signer).approveSale(home.id);
       await tx.wait();
 
@@ -64,6 +81,22 @@ const Home = ({ home, provider, account, escrow, toggleProp }) => {
       console.error('Buy error:', err);
     }
   };
+
+  const rentHandler = async () => {
+      try {
+          const rentPrice = await escrow.rentPrice(home.id);
+          const deposit = await escrow.escrowAmount(home.id);
+          const total = rentPrice.add(deposit);
+
+          const signer = await provider.getSigner();
+          const tx = await escrow.connect(signer).rentProperty(home.id, { value: total });
+          await tx.wait();
+
+          setTenant(await signer.getAddress());
+      } catch (err) {
+          console.error("Rent error:", err);
+      }
+  }
 
   const sellHandler = async () => {
     try {
@@ -86,8 +119,11 @@ const Home = ({ home, provider, account, escrow, toggleProp }) => {
       let tx = await escrow.connect(signer).inspectionUpdate(home.id, true);
       await tx.wait();
 
-      tx = await escrow.connect(signer).approveSale(home.id);
-      await tx.wait();
+      // Inspector also approves sale in original logic
+      if (!isRent) {
+        tx = await escrow.connect(signer).approveSale(home.id);
+        await tx.wait();
+      }
 
       setHasInspected(true);
     } catch (err) {
@@ -115,7 +151,7 @@ const Home = ({ home, provider, account, escrow, toggleProp }) => {
   useEffect(() => {
     fetchDetails();
     fetchOwner();
-  }, [hasSold]);
+  }, [hasSold, tenant]);
 
   return (
     <div className="home">
@@ -131,7 +167,7 @@ const Home = ({ home, provider, account, escrow, toggleProp }) => {
             {home.address}
           </p>
 
-          <h2>{home.attributes[0].value} ETH</h2>
+          <h2>{home.attributes[0].value} ETH {isRent && "/ mo"}</h2>
 
           <div style={{ margin: '1rem 0', display: 'flex', gap: '20px' }}>
             <p><strong>{home.attributes[2].value}</strong> Beds</p>
@@ -145,35 +181,59 @@ const Home = ({ home, provider, account, escrow, toggleProp }) => {
           <p style={{ margin: '1rem 0', lineHeight: '1.6' }}>{home.description}</p>
 
           <div style={{ marginTop: 'auto' }}>
-            {owner ? (
-              <div className="home__owned">
-                Owned by {owner.slice(0, 6) + '...' + owner.slice(38, 42)}
-              </div>
-            ) : account.toLowerCase() === inspector?.toLowerCase() ? (
-              <button className="home__buy" onClick={inspectHandler} disabled={hasInspected}>
-                {hasInspected ? 'Inspection Approved' : 'Approve Inspection'}
-              </button>
-            ) : account.toLowerCase() === lender?.toLowerCase() ? (
-              <button className="home__buy" onClick={lendHandler} disabled={hasLended}>
-                {hasLended ? 'Loan Approved' : 'Approve & Lend'}
-              </button>
-            ) : account.toLowerCase() === seller?.toLowerCase() ? (
-              <button className="home__buy" onClick={sellHandler} disabled={hasSold}>
-                {hasSold ? 'Sold' : 'Approve Sale'}
-              </button>
+            {/* Logic Branching for Rent vs Sale */}
+
+            {/* If Property is RENT Type */}
+            {isRent ? (
+                <>
+                    {tenant ? (
+                        <div className="home__owned">
+                            Rented by {tenant.slice(0, 6) + '...' + tenant.slice(38, 42)}
+                        </div>
+                    ) : (
+                         /* Rent Action */
+                         <button className="home__buy" onClick={rentHandler} disabled={!account}>
+                            {account ? "Rent Now" : "Connect Wallet to Rent"}
+                         </button>
+                    )}
+                </>
             ) : (
-              <>
-                {hasBought ? (
-                  <div className="home__owned">
-                    Pending Inspection & Approval
-                  </div>
-                ) : (
-                  <button className="home__buy" onClick={buyHandler} disabled={hasBought}>
-                    Buy Now
-                  </button>
-                )}
+                /* SALE Type */
+                <>
+                    {owner ? (
+                      <div className="home__owned">
+                        Owned by {owner.slice(0, 6) + '...' + owner.slice(38, 42)}
+                      </div>
+                    ) : account && account.toLowerCase() === inspector?.toLowerCase() ? (
+                      <button className="home__buy" onClick={inspectHandler} disabled={hasInspected}>
+                        {hasInspected ? 'Inspection Approved' : 'Approve Inspection'}
+                      </button>
+                    ) : account && account.toLowerCase() === lender?.toLowerCase() ? (
+                      <button className="home__buy" onClick={lendHandler} disabled={hasLended}>
+                        {hasLended ? 'Loan Approved' : 'Approve & Lend'}
+                      </button>
+                    ) : account && account.toLowerCase() === seller?.toLowerCase() ? (
+                      <button className="home__buy" onClick={sellHandler} disabled={hasSold}>
+                        {hasSold ? 'Sold' : 'Approve Sale'}
+                      </button>
+                    ) : (
+                      <>
+                        {hasBought ? (
+                          <div className="home__owned">
+                            Pending Inspection & Approval
+                          </div>
+                        ) : (
+                          <button className="home__buy" onClick={buyHandler} disabled={hasBought || !account}>
+                            {account ? "Buy Now" : "Connect Wallet to Buy"}
+                          </button>
+                        )}
+                      </>
+                    )}
+                </>
+            )}
+
+            {(!account || (!tenant && !owner)) && (
                 <button className="home__contact">Contact Agent</button>
-              </>
             )}
           </div>
         </div>

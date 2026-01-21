@@ -19,10 +19,13 @@ async function main() {
 
   console.log(`Deployed Real Estate contract at: ${realEstate.address}`);
 
-  // Minting Properties
-  console.log('Minting 3 properties....');
-  for(let i=1; i<4; i++){
-      const uri = `https://ipfs.io/ipfs/QmQVcpsjrA6cr1iJjZAodYwmPekYgbnXGo4DFubJiLc2EB/${i}.json`;
+  // Minting 9 Properties (Reusing 3 metadata files)
+  console.log('Minting 9 properties....');
+  for(let i=1; i<=9; i++){
+      // Cycle through 1, 2, 3
+      let metaId = ((i - 1) % 3) + 1;
+      const uri = `https://ipfs.io/ipfs/QmQVcpsjrA6cr1iJjZAodYwmPekYgbnXGo4DFubJiLc2EB/${metaId}.json`;
+
       let transaction = await realEstate.connect(deployer).mint(uri);
       await transaction.wait();
   }
@@ -30,7 +33,7 @@ async function main() {
   // Deploying Escrow
   const Escrow = await ethers.getContractFactory('Escrow')
   const escrow = await Escrow.deploy(realEstate.address)
-  await escrow.deployed(); // v5 syntax
+  await escrow.deployed();
 
   console.log(`Deployed Escrow contract at: ${escrow.address}`)
 
@@ -47,23 +50,45 @@ async function main() {
 
   // Property approval
   console.log("Approving properties...");
-  for(let i=1 ; i<4 ; i++){
+  for(let i=1 ; i<=9 ; i++){
     transaction = await realEstate.connect(deployer).approve(escrow.address, i)
     await transaction.wait()
   }
 
   // Listing Properties
   console.log("Listing properties...");
-  console.log("Listing properties...");
-  
-  transaction = await escrow.connect(deployer).list(1, tokens(0.001), tokens(0.0005)) 
+
+  // 1-3: Sale
+  transaction = await escrow.connect(deployer).list(1, tokens(10), tokens(5))
   await transaction.wait()
 
-  transaction = await escrow.connect(deployer).list(2, tokens(0.002), tokens(0.001))
+  transaction = await escrow.connect(deployer).list(2, tokens(15), tokens(5))
   await transaction.wait()
 
-  transaction = await escrow.connect(deployer).list(3, tokens(0.003), tokens(0.0015))
+  transaction = await escrow.connect(deployer).list(3, tokens(20), tokens(10))
   await transaction.wait()
+
+  // 4-6: Rent
+  // listRent(nftID, rentPrice, escrowAmount)
+  transaction = await escrow.connect(deployer).listRent(4, tokens(1), tokens(2))
+  await transaction.wait()
+
+  transaction = await escrow.connect(deployer).listRent(5, tokens(1.5), tokens(2))
+  await transaction.wait()
+
+  transaction = await escrow.connect(deployer).listRent(6, tokens(2), tokens(3))
+  await transaction.wait()
+
+  // 7-9: Sale again
+  transaction = await escrow.connect(deployer).list(7, tokens(12), tokens(6))
+  await transaction.wait()
+
+  transaction = await escrow.connect(deployer).list(8, tokens(18), tokens(9))
+  await transaction.wait()
+
+  transaction = await escrow.connect(deployer).list(9, tokens(25), tokens(10))
+  await transaction.wait()
+
   console.log('Finished. SAVE THESE ADDRESSES!');
   console.log(`RealEstate: ${realEstate.address}`);
   console.log(`Escrow: ${escrow.address}`);
