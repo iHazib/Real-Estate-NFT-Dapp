@@ -92,6 +92,26 @@ async function main() {
   console.log('Finished. SAVE THESE ADDRESSES!');
   console.log(`RealEstate: ${realEstate.address}`);
   console.log(`Escrow: ${escrow.address}`);
+
+  // Save to config.json
+  const fs = require('fs');
+  const path = require('path');
+  const configPath = path.join(__dirname, '../src/config.json');
+
+  let config = {};
+  if (fs.existsSync(configPath)) {
+      config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  }
+
+  const networkId = hre.network.config.chainId || 31337;
+
+  config[networkId] = {
+      "RealEstate": { "address": realEstate.address },
+      "Escrow": { "address": escrow.address }
+  };
+
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
+  console.log(`Updated config.json for network ${networkId}`);
 }
 
 main().catch((error) => {

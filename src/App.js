@@ -46,13 +46,17 @@ function App() {
       }
 
     } else {
-      // Fallback to Read-Only Provider (Sepolia by default)
-      // Or Localhost if we can detect it, but usually default to Sepolia
-      chainId = 11155111;
-      provider = ethers.getDefaultProvider('sepolia');
-      // If you are testing locally, you might want:
-      // provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545');
-      // chainId = 31337;
+      // Fallback to Read-Only Provider
+      // Detect if we are on localhost
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          // Use Localhost RPC
+          chainId = 31337;
+          provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545');
+      } else {
+          // Default to Sepolia
+          chainId = 11155111;
+          provider = ethers.getDefaultProvider('sepolia');
+      }
     }
 
     // Force Localhost for development if needed (Optional)
