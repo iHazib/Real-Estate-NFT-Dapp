@@ -23,6 +23,11 @@ contract Escrow {
     mapping(uint256 => bool) public inspectionStatus;
     mapping(uint256 => mapping(address => bool)) public approval;
 
+    // Renting Mappings
+    mapping(uint256 => bool) public isRent;
+    mapping(uint256 => uint256) public rentPrice;
+    mapping(uint256 => address) public tenant;
+
     constructor(address _nftAddress) {
         nftAddress = _nftAddress;
         owner = msg.sender;
@@ -64,20 +69,68 @@ contract Escrow {
         IERC721(nftAddress).transferFrom(msg.sender, address(this), _nftID);
 
         isListed[_nftID] = true;
+        isRent[_nftID] = false; // Explicitly set for sale
         purchasePrice[_nftID] = _purchasePrice;
         escrowAmount[_nftID] = _escrowAmount;
         // We reset the buyer so anyone can claim it
         buyer[_nftID] = address(0); 
     }
 
+    function listRent(
+        uint256 _nftID,
+        uint256 _rentPrice,
+        uint256 _escrowAmount
+    ) public payable onlySeller {
+        IERC721(nftAddress).transferFrom(msg.sender, address(this), _nftID);
+
+        isListed[_nftID] = true;
+        isRent[_nftID] = true; // Set for rent
+        rentPrice[_nftID] = _rentPrice;
+        escrowAmount[_nftID] = _escrowAmount;
+        tenant[_nftID] = address(0);
+    }
+
     // UPDATED: Removed onlyBuyer modifier.
     // The first person to deposit becomes the buyer.
     function earnestDeposit(uint256 _nftID) public payable {
         require(isListed[_nftID] == true, "Property not listed");
+        require(isRent[_nftID] == false, "Property is for rent, not sale");
         require(buyer[_nftID] == address(0), "Property already under contract");
         require(msg.value >= escrowAmount[_nftID], "Not enough ETH");
 
         buyer[_nftID] = msg.sender; // The caller becomes the buyer
+    }
+
+    function rentProperty(uint256 _nftID) public payable {
+        require(isListed[_nftID] == true, "Property not listed");
+        require(isRent[_nftID] == true, "Property is for sale, not rent");
+        require(tenant[_nftID] == address(0), "Property already rented");
+
+        uint256 totalAmount = escrowAmount[_nftID] + rentPrice[_nftID];
+        require(msg.value >= totalAmount, "Not enough ETH");
+
+        tenant[_nftID] = msg.sender;
+        isListed[_nftID] = false; // Delist so no one else can rent/buy
+
+        // Transfer the rent portion to the seller immediately
+        // The deposit (escrowAmount) stays in the contract
+        (bool success, ) = payable(seller).call{value: rentPrice[_nftID]}("");
+        require(success, "Transfer to seller failed");
+    }
+
+    // Allow landlord to end lease and return deposit (or claim it)
+    // For simplicity: We return deposit to tenant.
+    function endLease(uint256 _nftID) public onlySeller {
+        require(isRent[_nftID] == true, "Not a rental");
+        require(tenant[_nftID] != address(0), "No tenant");
+
+        address payable _tenant = payable(tenant[_nftID]);
+        tenant[_nftID] = address(0);
+        isListed[_nftID] = true; // Relist
+
+        // Return deposit
+        (bool success, ) = _tenant.call{value: escrowAmount[_nftID]}("");
+        require(success, "Transfer to tenant failed");
     }
 
     function inspectionUpdate(uint256 _nftID, bool _passed)

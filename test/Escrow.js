@@ -7,39 +7,45 @@ const tokens = (n) => {
 
 describe('Escrow', () => {
 
-    let deployer, buyer, seller, inspector, lender
+    let deployer, buyer, seller, inspector, lender, tenant
     let realEstate, escrow
 
     beforeEach(async () => {
         // 1. Setup accounts
-        [deployer, seller, buyer, inspector, lender] = await ethers.getSigners()
+        [deployer, seller, buyer, inspector, lender, tenant] = await ethers.getSigners()
 
         // 2. Deploy Real Estate
         const RealEstate = await ethers.getContractFactory('RealEstate')
         realEstate = await RealEstate.deploy()
-        await realEstate.deployed() // v5 syntax
+        await realEstate.deployed()
 
         // 3. Mint Logic
+        // Mint 2 properties
         let transaction = await realEstate.connect(seller).mint("https://ipfs.io/ipfs/QmQVcpsjrA6cr1iJjZAodYwmPekYgbnXGo4DFubJiLc2EB/1.json")
         await transaction.wait()
 
-        // 4. Deploy Escrow (Only passing NFT address now!)
+        transaction = await realEstate.connect(seller).mint("https://ipfs.io/ipfs/QmQVcpsjrA6cr1iJjZAodYwmPekYgbnXGo4DFubJiLc2EB/2.json")
+        await transaction.wait()
+
+        // 4. Deploy Escrow
         const Escrow = await ethers.getContractFactory('Escrow')
-        escrow = await Escrow.deploy(realEstate.address) // v5 syntax: use .address
-        await escrow.deployed() // v5 syntax
+        escrow = await Escrow.deploy(realEstate.address)
+        await escrow.deployed()
 
         // 5. SET THE ROLES
-        // The 'deployer' calls these because they are the 'owner'
         await escrow.connect(deployer).setSeller(seller.address)
         await escrow.connect(deployer).setInspector(inspector.address)
         await escrow.connect(deployer).setLender(lender.address)
 
-        // 6. Approve Property
+        // 6. Approve Properties
         transaction = await realEstate.connect(seller).approve(escrow.address, 1)
         await transaction.wait()
 
-        // 7. List Property
-        transaction = await escrow.connect(seller).list(1, buyer.address, tokens(10), tokens(5))
+        transaction = await realEstate.connect(seller).approve(escrow.address, 2)
+        await transaction.wait()
+
+        // 7. List Property 1 for SALE
+        transaction = await escrow.connect(seller).list(1, tokens(10), tokens(5))
         await transaction.wait()
     })
 
@@ -65,14 +71,14 @@ describe('Escrow', () => {
         })
     })
 
-    describe('Listing', () => {
+    describe('Listing (Sale)', () => {
         it('Updates ownership', async () => {
             expect(await realEstate.ownerOf(1)).to.be.equal(escrow.address)
         })
 
         it('Returns Buyer', async () => {
             const result = await escrow.buyer(1)
-            expect(result).to.be.equal(buyer.address)
+            expect(result).to.be.equal(ethers.constants.AddressZero)
         })
 
         it('Returns Purchase Price', async () => {
@@ -84,9 +90,14 @@ describe('Escrow', () => {
             const result = await escrow.escrowAmount(1)
             expect(result).to.be.equal(tokens(5))
         })
+
+        it('Checks isRent is false', async () => {
+             const result = await escrow.isRent(1)
+             expect(result).to.be.equal(false)
+        })
     })
 
-    describe('Deposits', () => {
+    describe('Deposits (Sale)', () => {
         it('Updates contract balance', async () => {
             const transaction = await escrow.connect(buyer).earnestDeposit(1, { value: tokens(5) })
             await transaction.wait()
@@ -149,6 +160,55 @@ describe('Escrow', () => {
 
         it('Updates balance', async () => {
             expect(await escrow.getBalance()).to.be.equal(0)
+        })
+    })
+
+    describe('Renting', () => {
+        beforeEach(async () => {
+             // List Property 2 for RENT
+             // Rent Price: 1 ETH, Deposit: 2 ETH
+             const transaction = await escrow.connect(seller).listRent(2, tokens(1), tokens(2))
+             await transaction.wait()
+        })
+
+        it('Updates ownership to escrow', async () => {
+            expect(await realEstate.ownerOf(2)).to.be.equal(escrow.address)
+        })
+
+        it('Sets isRent to true', async () => {
+             expect(await escrow.isRent(2)).to.be.equal(true)
+        })
+
+        it('Returns Rent Price', async () => {
+             expect(await escrow.rentPrice(2)).to.be.equal(tokens(1))
+        })
+
+        it('Allows tenant to rent', async () => {
+             // Tenant must pay Rent + Deposit = 1 + 2 = 3 ETH
+             const transaction = await escrow.connect(tenant).rentProperty(2, { value: tokens(3) })
+             await transaction.wait()
+
+             expect(await escrow.tenant(2)).to.be.equal(tenant.address)
+             expect(await escrow.isListed(2)).to.be.equal(false)
+
+             // Contract should hold only the deposit (2 ETH)
+             expect(await escrow.getBalance()).to.be.equal(tokens(2))
+        })
+
+        it('Ends lease correctly', async () => {
+             await escrow.connect(tenant).rentProperty(2, { value: tokens(3) })
+
+             // End Lease
+             const transaction = await escrow.connect(seller).endLease(2)
+             await transaction.wait()
+
+             expect(await escrow.tenant(2)).to.be.equal(ethers.constants.AddressZero)
+             expect(await escrow.isListed(2)).to.be.equal(true)
+             expect(await escrow.getBalance()).to.be.equal(0)
+        })
+
+        it('Prevents sale deposit on rent property', async () => {
+             await expect(escrow.connect(buyer).earnestDeposit(2, { value: tokens(5) })).to.be.revertedWith("Property is for rent, not sale")
         })
     })
 })
